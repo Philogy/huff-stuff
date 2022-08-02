@@ -1,0 +1,160 @@
+#include "./Utils.huff"
+
+// Storage Layout
+#define constant SLOT_TOTAL_SUPPLY = FREE_STORAGE_POINTER()
+#define constant SLOT_BALANCE_OF = FREE_STORAGE_POINTER()
+#define constant SLOT_ALLOWANCE = FREE_STORAGE_POINTER()
+
+// ERC20
+// ERC20 -- errors
+#define error ERC20InsufficientAllowanceError()
+#define error ERC20InsufficientBalanceError()
+#define error ZeroAddressError()
+// ERC20 -- events
+#define event Transfer(address indexed _from, address indexed _to, uint256 _value)
+#define event Approval(address indexed _owner, address indexed _spender, uint256 _value)
+// ERC20 -- non view
+#define function transfer(address to, uint256 amount) nonpayable returns (bool)
+#define function transferFrom(address from, address to, uint256 amount) nonpayable returns (bool)
+#define function approve(address spender, uint256 amount) nonpayable returns (bool)
+// ERC20 -- view
+#define function name() view returns (string)
+#define function symbol() view returns (string)
+#define function decimals() view returns (uint8)
+#define function totalSupply() view returns (uint256)
+#define function balanceOf(address account) view returns (uint256)
+#define function allowance(address owner, address spender) view returns (uint256)
+
+
+
+#define macro INCREASE_SUPPLY() = takes(1) returns(0) {
+  // takes:                     [supply_increase]
+  [SLOT_TOTAL_SUPPLY] sload  // [total_supply, supply_increase]
+  add                        // [new_total_supply]
+  [SLOT_TOTAL_SUPPLY] sstore
+}
+
+#define macro DECREASE_SUPPLY() = takes(1) returns(0) {
+  // takes:                     [supply_increase]
+  [SLOT_TOTAL_SUPPLY] sload  // [total_supply, supply_increase]
+  sub                        // [new_total_supply]
+  [SLOT_TOTAL_SUPPLY] sstore
+}
+
+#define macro EMIT_TRANSFER() = takes(3) returns(0) {
+  // takes:      [amount, from, to]
+  0x00 mstore // [from, to]
+  __EVENT_HASH(Transfer) 0x20 0x00 log3
+}
+
+#define macro RETURN_SUCCESS() = takes(0) returns(0) { 0x01 RETURN1() }
+
+#define macro DO_TRANSFER() = takes(3) returns(0) {
+  // takes:                 [from, to, amount]
+  dup2 ZERO_ADDR_CHECK() // [from, to, amount]
+  dup2 dup2 dup5         // [amount, from, to, from, to, amount]
+  EMIT_TRANSFER()        // [from, to, amount]
+  dup3 swap1             // [from, amount, to, amount]
+  DECREASE_BALANCE()     // [to, amount]
+  INCREASE_BALANCE()     // []
+  RETURN_SUCCESS()
+}
+
+
+#define macro APPROVE() = takes(0) returns(0) {
+  NO_VALUE_CHECK()
+
+  0x24 calldataload      // [allowance]
+  0x04 calldataload dup1 // [spender, spender, allowance]
+  dup1 ZERO_ADDR_CHECK() // [spender, spender, allowance]
+
+  0x20 mstore            // [spender, allowance]
+  caller 0x00 mstore     // [spender, allowance]
+  dup2                   // [allowance, spender, allowance]
+  CALC_ALLOWANCE_SLOT()  // [allowance_slot, allowance, spender, allowance]
+  sstore                 // [spender, allowance]
+  swap1 0x00 mstore      // [spender]
+  caller                 // [msg.sender, spender]
+  __EVENT_HASH(Approval) // [sig(Approval), msg.sender, spender]
+  0x20 0x00 log3         // []
+
+  RETURN_SUCCESS()
+}
+
+
+#define constant MAX_ALLOWANCE = 0xffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff
+#define macro TRANSFER_FROM(erc20_transer_hook) = takes(0) returns(0) {
+  NO_VALUE_CHECK() // ensures that msg.value = 0
+
+  // cheaper than individual calldataload, mstore
+  0x60 0x04 0x40 calldatacopy
+
+  caller 0x20 mstore
+  [SLOT_ALLOWANCE] callvalue mstore
+  0x04 calldataload      // [allowance_slot, from]
+  0x60 callvalue sha3    // [allowance_slot, from]
+  0x44 calldataload dup1 // [amount, amount, allowance_slot, from]
+  dup3 sload             // [allowance, amount, amount, allowance_slot, from]
+  dup1 [MAX_ALLOWANCE] eq erc20_skip_allowance_update jumpi
+  __FUNC_SIG(ERC20InsufficientAllowanceError) SAFE_SUB()
+  //                        [new_allowance, amount, allowance_slot, from]
+  dup1 swap3 sstore      // [amount, new_allowance, from]
+  swap1 callvalue mstore // [amount, from]
+  caller dup3            // [from, msg.sender, amount, from]
+  __EVENT_HASH(Approval) // [Approval.sig, from, msg.sender, amount, from]
+  0x20 callvalue log3    // [amount, from]
+  dup1                   // [amount, amount, from]
+  erc20_skipskip jump
+
+  erc20_skip_allowance_update:
+  //                        [allowance, amount, amount, allowance_slot, from]
+    pop swap2 pop        // [amount, amount, from]
+  erc20_skipskip:        // [amount, amount, from]
+
+  calldataload 0x24      // [to, amount, amount, from]
+
+  // trigger transfer hook
+  erc20_hook_return      // [pc_hook_return, to, amount, amount, from]
+  dup3 dup3 dup7         // [from, to, amount, pc_hook_return, to, amount, amount, from]
+  <erc20_transer_hook> jump
+  erc20_hook_return:
+
+  RETURN_SUCCESS()
+}
+
+
+#define macro BALANCE_OF() = takes(0) returns(0) {
+  NO_VALUE_CHECK()
+  [SLOT_BALANCE_OF] 0x00 mstore
+  0x04 calldataload 0x20 mstore
+  0x40 0x00 sha3 sload RETURN1()
+}
+
+#define macro TOTAL_SUPPLY() = takes(0) returns(0) {
+  NO_VALUE_CHECK()
+  [SLOT_TOTAL_SUPPLY] sload RETURN1()
+}
+
+#define macro _ERC20_SELECTOR_SWITCH(erc20_transer_hook) = takes(1) returns(1) {
+  dup1 __FUNC_SIG(transfer) eq transfer jumpi
+  dup1 __FUNC_SIG(transferFrom) eq transferFrom jumpi
+  dup1 __FUNC_SIG(approve) eq approve jumpi
+  dup1 __FUNC_SIG(balanceOf) eq balanceOf jumpi
+  dup1 __FUNC_SIG(allowance) eq allowance jumpi
+  dup1 __FUNC_SIG(totalSupply) eq totalSupply jumpi
+  erc20_continue jump
+
+  transfer:
+  transferFrom:
+    TRANSFER_FROM(<erc20_transer_hook>)
+  approve:
+  balanceOf:
+    BALANCE_OF()
+  allowance:
+  totalSupply:
+    TOTAL_SUPPLY()
+
+  0x0 0x0 revert
+
+  erc20_continue:
+}

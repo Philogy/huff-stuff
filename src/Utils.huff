@@ -1,0 +1,31 @@
+#define macro REQUIRE() = takes (2) returns (0) {
+  // takes:                       [condition, error_sig]
+  utils_require_continue jumpi // [error_sig]
+  0x00 mstore
+  0x04 0x1c revert
+  utils_require_continue:
+}
+
+#define macro SAFE_SUB() = takes(3) returns(1) {
+  // takes:    [error_sig, x, y]
+  dup4 dup4 // [x, y, error_sig, x, y]
+  lt iszero // [x >= y, error_sig, x, y]
+  REQUIRE() // [error_sig, x, y]
+  pop sub   // [x-y]
+}
+
+#define macro NO_VALUE_CHECK() = takes(0) returns(0) {
+  callvalue iszero continue_after_value_check jumpi
+  0x00 0x00 revert
+  continue_after_value_check:
+}
+
+#define macro RETURN1() = takes(1) returns(0) {
+  // takes: [value_to_return]
+  0x00 mstore
+  0x20 0x00 return
+}
+
+#define macro GET_SELECTOR() = takes(0) returns(0) {
+  0x00 calldataload 0xE0 shr
+}
