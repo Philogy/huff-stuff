@@ -81,6 +81,42 @@
   RETURN_SUCCESS()
 }
 
+#define macro TRANSFER() = takes(0) returns(0) {
+  NO_VALUE_CHECK()
+
+
+  // -- zero address check
+  0x04 calldataload   // [to]
+  __FUNC_SIG(ZeroAddressError) dup2 REQUIRE() pop // ~= require(to != address(0))
+  //                     [to]
+
+  // -- decrease msg.sender balance
+  // mstore(0x00, SLOT_BALANCE_OF)
+  [SLOT_BALANCE_OF] callvalue mstore
+  // mstore(0x20, msg.sender)
+  caller 0x20 mstore
+  0x24 calldataload   // [amount, to]
+  0x40 callvalue sha3 // [from_bal_slot, amount, to]
+  dup2 dup2 sload     // [from_bal, amount, from_bal_slot, amount, to]
+  __FUNC_SIG(ERC20InsufficientBalanceError)
+  SAFE_SUB()          // [from_new_bal, from_bal_slot, amount, to]
+  swap1 sstore        // [amount, to]
+
+  // -- increase to balance
+  0x40 0x04 0x20 calldatacopy
+  0x40 callvalue sha3 // [to_bal_slot, amount, to]
+  swap1 dup2 sload    // [to_bal, amount, to_bal_slot, to]
+  add swap1 sstore    // [to]
+
+  // -- emit event
+  caller              // [msg.sender, to]
+  __EVENT_HASH(Transfer)
+  //                     [Transfer.sig, msg.sender, to]
+  0x20 0x40 log3      // []
+
+  0x01 RETURN1_VALUE0()
+}
+
 
 /*
 Memory layout:
@@ -90,18 +126,21 @@ Memory layout:
 0x60: to
 0x80: amount
 */
-#define macro TRANSFER_FROM(erc20_transer_hook) = takes(0) returns(0) {
-  NO_VALUE_CHECK() // ensures that msg.value = 0
+#define macro TRANSFER_FROM() = takes(0) returns(0) {
+  NO_VALUE_CHECK()
 
-  // cheaper than individual calldataload, mstore
+  // -- zero address check
+  0x24 calldataload      // [to]
+  __FUNC_SIG(ZeroAddressError) dup2 REQUIRE() pop
+  //                        [to]
+
+  // -- check and update allowance
+  // calldatacopy cheaper than 3x (calldataload, mstore)
   0x60 0x04 0x40 calldatacopy
-
   // mstore(0x00, SLOT_ALLOWANCE)
   [SLOT_ALLOWANCE] callvalue mstore
   // mstore(0x20, msg.sender)
   caller 0x20 mstore
-  0x24 calldataload      // [to]
-  __FUNC_SIG(ZeroAddressError) dup2 REQUIRE() pop
   //                        [to]
   0x04 calldataload      // [from, to]
   0x60 callvalue sha3    // [allowance_slot, from, to]
@@ -117,36 +156,31 @@ Memory layout:
   0x20 callvalue log3    // [amount, from, to]
   dup1                   // [amount, amount, from, to]
   erc20_skipskip jump
-
   erc20_skip_allowance_update:
   //                        [allowance, amount, amount, allowance_slot, from, to]
     pop swap2 pop        // [amount, amount, from, to]
   erc20_skipskip:        // [amount, amount, from, to]
 
-  // trigger transfer hook
-  erc20_hook_return      // [pc_hook_return, amount, amount, from, to]
-  dup2 dup6 dup6         // [from, to, amount, pc_hook_return, amount, amount, from, to]
-  <erc20_transer_hook> jump
-  // compliant hook should use 4 return 0
-  erc20_hook_return:    // [amount, amount, from, to]
-
-  // do transfer
-  // decrease from balance
+  // -- transfer
+  // -- decrease from balance
   [SLOT_BALANCE_OF] 0x20 mstore
   0x40 0x20 sha3        // [from_bal_slot, amount, amount, from, to]
   swap1 dup2 sload      // [from_bal, amount, from_bal_slot, amount, from, to]
   __FUNC_SIG(ERC20InsufficientBalanceError)
   SAFE_SUB()            // [from_new_bal, from_bal_slot, amount, from, to]
   swap1 sstore          // [amount, from, to]
+
   // increase to balance
   [SLOT_BALANCE_OF] 0x40 mstore
   0x40 0x40 sha3        // [to_bal_slot, amount, from, to]
   swap1 dup2            // [to_bal_slot, amount, to_bal_slot, from, to]
   sload add             // [to_new_bal, to_bal_slot, from, to]
   swap1 sstore          // [from, to]
+
+  // -- emit event
   __EVENT_HASH(Transfer)
   //                       [Transfer.sig, from, to]
-  0x20 0x80 log3
+  0x20 0x80 log3        // []
 
   0x01 RETURN1_VALUE0()
 }
@@ -163,7 +197,7 @@ Memory layout:
   [SLOT_TOTAL_SUPPLY] sload RETURN1()
 }
 
-#define macro _ERC20_SELECTOR_SWITCH(erc20_transer_hook) = takes(1) returns(1) {
+#define macro _ERC20_SELECTOR_SWITCH() = takes(1) returns(1) {
   // takes: [selector]
   dup1 __FUNC_SIG(transfer) eq transfer jumpi
   dup1 __FUNC_SIG(transferFrom) eq transferFrom jumpi
@@ -174,8 +208,9 @@ Memory layout:
   erc20_continue jump
 
   transfer:
+    TRANSFER()
   transferFrom:
-    TRANSFER_FROM(<erc20_transer_hook>)
+    TRANSFER_FROM()
   approve:
   balanceOf:
     BALANCE_OF()
