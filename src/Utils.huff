@@ -1,9 +1,9 @@
-#define macro REQUIRE() = takes (2) returns (0) {
+#define macro REQUIRE() = takes (2) returns (1) {
   // takes:                       [condition, error_sig]
   utils_require_continue jumpi // [error_sig]
   0x00 mstore
   0x04 0x1c revert
-  utils_require_continue:
+  utils_require_continue:      // [error_sig]
 }
 
 #define macro SAFE_SUB() = takes(3) returns(1) {
@@ -24,6 +24,18 @@
   // takes: [value_to_return]
   0x00 mstore
   0x20 0x00 return
+}
+
+#define macro RETURN1_VALUE0() = takes(1) returns(0) {
+  // takes: [value_to_return]
+  callvalue mstore
+  0x20 callvalue return
+}
+
+#define macro RETURN1_RETURNDATA0() = takes(1) returns(0) {
+  // takes: [value_to_return]
+  returndatasize mstore
+  0x20 returndatasize return
 }
 
 #define macro GET_SELECTOR() = takes(0) returns(0) {
