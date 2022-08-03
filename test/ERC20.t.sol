@@ -50,7 +50,6 @@ contract ERC20Test is Test {
     }
 
     function testSymbol() public {
-        setUp();
         assertEq(token.symbol(), "TOK");
     }
 
