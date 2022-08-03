@@ -1,3 +1,6 @@
+
+#define error Panic(uint256)
+
 #define macro REQUIRE() = takes (2) returns (1) {
   // takes:                       [condition, error_sig]
   utils_require_continue jumpi // [error_sig]
@@ -8,10 +11,32 @@
 
 #define macro SAFE_SUB() = takes(3) returns(1) {
   // takes:    [error_sig, x, y]
-  dup4 dup4 // [x, y, error_sig, x, y]
+  dup3 dup3 // [x, y, error_sig, x, y]
   lt iszero // [x >= y, error_sig, x, y]
   REQUIRE() // [error_sig, x, y]
   pop sub   // [x-y]
+}
+
+#define macro SAFE_SUB_PANIC() = takes(2) returns(1) {
+  // takes:    [x, y]
+  dup2 dup2 // [x, y, x, y]
+  lt iszero // [x >= y, x, y]
+  continue_safe_sub jumpi
+  0x11 PANIC()
+  continue_safe_sub:
+    sub     // [x - y]
+}
+
+#define macro SAFE_ADD_PANIC() = takes(2) returns(1) {
+  // takes: [x, y]
+  dup2       // [y, x, y]
+  add        // [y + x, y]
+  swap1 dup2 // [y + x, y, y + x]
+  lt iszero  // [y + x >= y, y + x]
+  continue_safe_add jumpi
+  0x11 PANIC()
+  continue_safe_add:
+  //            [y + x]
 }
 
 #define macro NO_VALUE_CHECK() = takes(0) returns(0) {
@@ -40,4 +65,11 @@
 
 #define macro GET_SELECTOR() = takes(0) returns(0) {
   0x00 calldataload 0xE0 shr
+}
+
+#define macro PANIC() = takes(1) returns(0) {
+  // takes: [panic_code]
+  __FUNC_SIG(Panic) 0x00 mstore
+  0x20 mstore
+  0x24 0x1c revert
 }
