@@ -1,0 +1,72 @@
+#include "./ERC20.huff"
+#include "./Utils.huff"
+
+#define function mintTo(address, uint256) nonpayable returns (bool)
+#define function burnFrom(address, uint256) nonpayable returns (bool)
+
+#define macro CONSTRUCTOR() = takes(0) returns(0) {
+  caller 0x33b2e3c9fd0803ce8000000 ERC20_MINT(0x00, 0x20)
+}
+
+#define macro DECIMALS() = takes(0) returns(0) {
+  NO_VALUE_CHECK()
+  0x12 RETURN1_VALUE0()
+}
+
+#define macro SYMBOL() = takes(0) returns(0) {
+  NO_VALUE_CHECK()
+  // "TOK"
+  0x544f4b 0x23 mstore
+  0x20 callvalue mstore
+  0x03 0x20 mstore
+  0x60 callvalue return
+}
+
+#define macro NAME() = takes(0) returns(0) {
+  NO_VALUE_CHECK()
+  // "TOK"
+  0x4d6f636b20546f6b656e 0x2a mstore
+  0x20 callvalue mstore
+  0x0a 0x20 mstore
+  0x60 callvalue return
+}
+
+#define macro MINT_TO() = takes(0) returns(0) {
+  NO_VALUE_CHECK()
+
+  0x04 calldataload      // [recipient]
+  0x24 calldataload      // [amount, recipient]
+  ERC20_MINT(0x00, 0x20)
+
+  0x01 RETURN1_VALUE0()
+}
+
+#define macro BURN_FROM() = takes(0) returns(0) {
+  NO_VALUE_CHECK()
+
+  0x04 calldataload      // [account]
+  0x24 calldataload      // [amount, account]
+  ERC20_BURN(0x00, 0x20)
+
+  0x01 RETURN1_VALUE0()
+}
+
+#define macro MAIN() = takes(0) returns(0) {
+  GET_SELECTOR()
+  dup1 __FUNC_SIG(mintTo) eq mint_to jumpi
+  dup1 __FUNC_SIG(burnFrom) eq burn_from jumpi
+  _ERC20_SELECTOR_SWITCH(decimals, symbol, name)
+
+  0x00 0x00 revert
+
+  mint_to:
+    MINT_TO()
+  burn_from:
+    BURN_FROM()
+  decimals:
+    DECIMALS()
+  symbol:
+    SYMBOL()
+  name:
+    NAME()
+}
