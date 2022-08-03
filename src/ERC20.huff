@@ -1,4 +1,4 @@
-#include "./Utils.huff"
+#include "../../Utils.huff"
 
 // Storage Layout
 #define constant SLOT_TOTAL_SUPPLY = FREE_STORAGE_POINTER()
@@ -230,11 +230,6 @@ memory layout:
   0x0 swap1                // [recipient, 0]
   __EVENT_HASH(Transfer)   // [Transfer.sig, recipient, 0]
   0x20 <mem1> log3         // []
-}
-
-#define macro DECIMALS() = takes(1) returns(0) {
-  // takes: [decimals]
-  RETURN1_RETURNDATA0()
 }
 
 #define macro _ERC20_SELECTOR_SWITCH(decimals, symbol, name) = takes(1) returns(1) {

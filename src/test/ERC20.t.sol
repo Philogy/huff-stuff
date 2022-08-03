@@ -20,7 +20,9 @@ contract ERC20Test is Test {
 
     function setUp() public {
         token = ERC20(
-            HuffDeployer.config().with_deployer(USER1).deploy("MockERC20")
+            HuffDeployer.config().with_deployer(USER1).deploy(
+                "test/contracts/MockERC20"
+            )
         );
         vm.label(address(token), "Token");
     }
@@ -30,7 +32,9 @@ contract ERC20Test is Test {
         emit Transfer(address(0), USER1, 1e9 * 1e18);
         vm.prank(USER1);
         ERC20 newToken = ERC20(
-            HuffDeployer.config().with_deployer(USER1).deploy("MockERC20")
+            HuffDeployer.config().with_deployer(USER1).deploy(
+                "test/contracts/MockERC20"
+            )
         );
 
         assertEq(newToken.balanceOf(USER1), 1e9 * 1e18, "balance mismatch");
