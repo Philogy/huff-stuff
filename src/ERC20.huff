@@ -50,8 +50,11 @@
   swap1 sstore        // [amount, to]
 
   // -- increase to balance
+  // calldatacopy cheaper than 2x (dupX memX mstore)
   0x40 0x04 0x20 calldatacopy
+  // [SLOT_BALANCE_OF] still at 0x00, can directly calculate to balance slot
   0x40 callvalue sha3 // [to_bal_slot, amount, to]
+  // slot kept on stack to avoid having to recalculate
   swap1 dup2 sload    // [to_bal, amount, to_bal_slot, to]
   add swap1 sstore    // [to]
 
@@ -59,6 +62,7 @@
   caller              // [msg.sender, to]
   __EVENT_HASH(Transfer)
   //                     [Transfer.sig, msg.sender, to]
+  // amount already memory from calldatacopy
   0x20 0x40 log3      // []
 
   0x01 RETURN1_VALUE0()
@@ -82,7 +86,7 @@ Memory layout:
   //                        [to]
 
   // -- check and update allowance
-  // calldatacopy cheaper than 3x (calldataload, mstore)
+  // calldatacopy cheaper than 3x (dupX memX mstore)
   0x60 0x04 0x40 calldatacopy
   // mstore(0x00, SLOT_ALLOWANCE)
   [SLOT_ALLOWANCE] callvalue mstore
@@ -93,6 +97,7 @@ Memory layout:
   0x60 callvalue sha3    // [allowance_slot, from, to]
   0x44 calldataload dup1 // [amount, amount, allowance_slot, from, to]
   dup3 sload             // [allowance, amount, amount, allowance_slot, from, to]
+  // if allowance is 2**256-1 (practically infinite) allowance decrease unnecessary
   dup1 [MAX_ALLOWANCE] eq erc20_skip_allowance_update jumpi
   __FUNC_SIG(ERC20InsufficientAllowanceError) SAFE_SUB()
   //                        [new_allowance, amount, allowance_slot, from, to]
@@ -177,6 +182,7 @@ memory layout:
 
 #define macro __ERC20_ALLOWANCE() = takes(0) returns(0) {
   NO_VALUE_CHECK()
+
   [SLOT_ALLOWANCE] returndatasize mstore
   0x04 calldataload        // [owner]
   0x40 mstore              // []
@@ -262,7 +268,6 @@ memory layout:
     __ERC20_ALLOWANCE()
   decimals:
     <decimals> RETURN1_RETURNDATA0()
-
 
   erc20_continue: // [selector]
 }

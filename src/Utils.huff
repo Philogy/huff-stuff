@@ -1,14 +1,26 @@
 
 #define error Panic(uint256)
 
+
+/* the remaining error sig is explicitly not popped, can be useful if chaining
+ * multiple conditions into an AND-type conditional statement
+ *
+ * solidity: if (!(cond1 && cond2 && cond3)) revert MyCustomError()
+ * huff, where cond<x> is an op that places condition at the top of stack:
+ * __FUNC_SIG(MyCustomError)
+ * cond1 REQUIRE()
+ * cond2 REQUIRE()
+ * cond3 REQUIRE()
+ */
 #define macro REQUIRE() = takes (2) returns (1) {
   // takes:                       [condition, error_sig]
   utils_require_continue jumpi // [error_sig]
-  0x00 mstore
+  0x00 mstore                  // []
   0x04 0x1c revert
   utils_require_continue:      // [error_sig]
 }
 
+// underflow safe subtraction with custom error
 #define macro SAFE_SUB() = takes(3) returns(1) {
   // takes:    [error_sig, x, y]
   dup3 dup3 // [x, y, error_sig, x, y]
@@ -17,6 +29,7 @@
   pop sub   // [x-y]
 }
 
+// underflow safe subtraction which throws same error as solidity
 #define macro SAFE_SUB_PANIC() = takes(2) returns(1) {
   // takes:    [x, y]
   dup2 dup2 // [x, y, x, y]
