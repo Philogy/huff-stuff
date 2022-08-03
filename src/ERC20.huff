@@ -134,10 +134,9 @@ Memory layout:
 
 
 #define macro __ERC20_BALANCE_OF() = takes(0) returns(0) {
-  NO_VALUE_CHECK()
-  [SLOT_BALANCE_OF] callvalue mstore
+  [SLOT_BALANCE_OF] returndatasize mstore
   0x04 calldataload 0x20 mstore
-  0x40 callvalue sha3 sload RETURN1_VALUE0()
+  0x40 returndatasize sha3 sload RETURN1_RETURNDATA0()
 }
 
 /*
@@ -171,22 +170,19 @@ memory layout:
 }
 
 #define macro __ERC20_TOTAL_SUPPLY() = takes(0) returns(0) {
-  NO_VALUE_CHECK()
-  [SLOT_TOTAL_SUPPLY] sload RETURN1_VALUE0()
+  [SLOT_TOTAL_SUPPLY] sload RETURN1_RETURNDATA0()
 }
 
 #define macro __ERC20_ALLOWANCE() = takes(0) returns(0) {
-  NO_VALUE_CHECK()
+  [SLOT_ALLOWANCE] returndatasize mstore
+  0x04 calldataload        // [owner]
+  0x40 mstore              // []
+  0x24 calldataload        // [spender]
+  0x20 mstore              // []
+  0x60 returndatasize sha3 // [allowance_slot]
+  sload                    // [allowance]
 
-  [SLOT_ALLOWANCE] callvalue mstore
-  0x04 calldataload   // [owner]
-  0x40 mstore         // []
-  0x24 calldataload   // [spender]
-  0x20 mstore         // []
-  0x60 callvalue sha3 // [allowance_slot]
-  sload               // [allowance]
-
-  RETURN1_VALUE0()
+  RETURN1_RETURNDATA0()
 }
 
 // mem2 = 0x20 + mem1
@@ -234,6 +230,11 @@ memory layout:
   0x0 swap1                // [recipient, 0]
   __EVENT_HASH(Transfer)   // [Transfer.sig, recipient, 0]
   0x20 <mem1> log3         // []
+}
+
+#define macro DECIMALS() = takes(1) returns(0) {
+  // takes: [decimals]
+  RETURN1_RETURNDATA0()
 }
 
 #define macro _ERC20_SELECTOR_SWITCH(decimals, symbol, name) = takes(1) returns(1) {
