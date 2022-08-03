@@ -5,7 +5,7 @@
 #define function burnFrom(address, uint256) nonpayable returns (bool)
 
 #define macro CONSTRUCTOR() = takes(0) returns(0) {
-  caller 0x33b2e3c9fd0803ce8000000 ERC20_MINT(0x00, 0x20)
+  caller 0x33b2e3c9fd0803ce8000000 ERC20_SAFE_MINT(0x00, 0x20)
 }
 
 #define macro SYMBOL() = takes(0) returns(0) {
@@ -31,7 +31,7 @@
 
   0x04 calldataload      // [recipient]
   0x24 calldataload      // [amount, recipient]
-  ERC20_MINT(0x00, 0x20)
+  ERC20_SAFE_MINT(0x00, 0x20)
 
   0x01 RETURN1_VALUE0()
 }
@@ -41,7 +41,7 @@
 
   0x04 calldataload      // [account]
   0x24 calldataload      // [amount, account]
-  ERC20_BURN(0x00, 0x20)
+  ERC20_SAFE_BURN(0x00, 0x20)
 
   0x01 RETURN1_VALUE0()
 }

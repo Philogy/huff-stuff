@@ -134,6 +134,7 @@ Memory layout:
 
 
 #define macro __ERC20_BALANCE_OF() = takes(0) returns(0) {
+  NO_VALUE_CHECK()
   [SLOT_BALANCE_OF] returndatasize mstore
   0x04 calldataload 0x20 mstore
   0x40 returndatasize sha3 sload RETURN1_RETURNDATA0()
@@ -170,10 +171,12 @@ memory layout:
 }
 
 #define macro __ERC20_TOTAL_SUPPLY() = takes(0) returns(0) {
+  NO_VALUE_CHECK()
   [SLOT_TOTAL_SUPPLY] sload RETURN1_RETURNDATA0()
 }
 
 #define macro __ERC20_ALLOWANCE() = takes(0) returns(0) {
+  NO_VALUE_CHECK()
   [SLOT_ALLOWANCE] returndatasize mstore
   0x04 calldataload        // [owner]
   0x40 mstore              // []
