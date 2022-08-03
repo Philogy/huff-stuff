@@ -10,7 +10,7 @@ Source: `ERC20.huff`
 **Basic Macros:**
 
 The `_ERC20_SELECTOR_SWITCH` macro inserts the ERC20 selector switch into your
-code. It takes 1 argument the selector and returns meaning it can seamlessly be
+code. It takes 1 stack argument the selector and returns meaning it can seamlessly be
 added to an existing selector switch. Example:
 
 ```huff
