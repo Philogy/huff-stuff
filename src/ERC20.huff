@@ -186,7 +186,7 @@ memory layout:
 }
 
 // mem2 = 0x20 + mem1
-#define macro ERC20_MINT(mem1, mem2) = takes(2) returns(0) {
+#define macro ERC20_SAFE_MINT(mem1, mem2) = takes(2) returns(0) {
   // takes:                   [amount, recipient]
   // -- update total supply
   [SLOT_TOTAL_SUPPLY] dup1 // [supply_slot, supply_slot, amount, recipient]
@@ -209,26 +209,26 @@ memory layout:
 }
 
 // mem2 = 0x20 + mem1
-#define macro ERC20_BURN(mem1, mem2) = takes(2) returns(0) {
-  // takes:                   [amount, recipient]
+#define macro ERC20_SAFE_BURN(mem1, mem2) = takes(2) returns(0) {
+  // takes:                   [amount, account]
   // -- update total supply
-  [SLOT_TOTAL_SUPPLY] dup1 // [supply_slot, supply_slot, amount, recipient]
-  sload dup3 sub           // [new_supply, supply_slot, amount, recipient]
-  swap1 sstore             // [amount, recipient]
+  [SLOT_TOTAL_SUPPLY] dup1 // [supply_slot, supply_slot, amount, account]
+  sload dup3 sub           // [new_supply, supply_slot, amount, account]
+  swap1 sstore             // [amount, account]
 
   // -- increase balance
   [SLOT_BALANCE_OF] <mem1> mstore
   dup2 <mem2> mstore
-  0x40 <mem1> sha3         // [recipient_bal_slot, amount, recipient]
-  dup2 dup2 sload          // [recipient_bal, amount, recipient_bal_slot, amount, recipient]
+  0x40 <mem1> sha3         // [recipient_bal_slot, amount, account]
+  dup2 dup2 sload          // [recipient_bal, amount, recipient_bal_slot, amount, account]
   __FUNC_SIG(ERC20InsufficientBalanceError)
-  SAFE_SUB()               // [new_bal, recipient_bal_slot, amount, recipient]
-  swap1 sstore             // [amount, recipient]
+  SAFE_SUB()               // [new_bal, recipient_bal_slot, amount, account]
+  swap1 sstore             // [amount, account]
 
   // -- emit event
-  <mem1> mstore            // [recipient]
-  0x0 swap1                // [recipient, 0]
-  __EVENT_HASH(Transfer)   // [Transfer.sig, recipient, 0]
+  <mem1> mstore            // [account]
+  0x0 swap1                // [account, 0]
+  __EVENT_HASH(Transfer)   // [Transfer.sig, account, 0]
   0x20 <mem1> log3         // []
 }
 
@@ -240,7 +240,7 @@ memory layout:
   dup1 __FUNC_SIG(approve) eq approve jumpi
   dup1 __FUNC_SIG(totalSupply) eq totalSupply jumpi
   dup1 __FUNC_SIG(allowance) eq allowance jumpi
-  dup1 __FUNC_SIG(decimals) eq <decimals> jumpi
+  dup1 __FUNC_SIG(decimals) eq decimals jumpi
   dup1 __FUNC_SIG(symbol) eq <symbol> jumpi
   dup1 __FUNC_SIG(name) eq <name> jumpi
   erc20_continue jump
@@ -257,6 +257,9 @@ memory layout:
     __ERC20_TOTAL_SUPPLY()
   allowance:
     __ERC20_ALLOWANCE()
+  decimals:
+    <decimals> RETURN1_RETURNDATA0()
+
 
   erc20_continue: // [selector]
 }

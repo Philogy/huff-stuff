@@ -4,8 +4,6 @@
 #define function mintTo(address, uint256) nonpayable returns (bool)
 #define function burnFrom(address, uint256) nonpayable returns (bool)
 
-#define constant MOCK_DECIMALS = 0x12 // 18
-
 #define macro CONSTRUCTOR() = takes(0) returns(0) {
   caller 0x33b2e3c9fd0803ce8000000 ERC20_MINT(0x00, 0x20)
 }
@@ -21,7 +19,7 @@
 
 #define macro NAME() = takes(0) returns(0) {
   NO_VALUE_CHECK()
-  // "TOK"
+  // "Mock Token"
   0x4d6f636b20546f6b656e 0x2a mstore
   0x20 callvalue mstore
   0x0a 0x20 mstore
@@ -52,7 +50,8 @@
   GET_SELECTOR()
   dup1 __FUNC_SIG(mintTo) eq mint_to jumpi
   dup1 __FUNC_SIG(burnFrom) eq burn_from jumpi
-  _ERC20_SELECTOR_SWITCH(decimals, symbol, name)
+  // 18 decimals
+  _ERC20_SELECTOR_SWITCH(0x12, symbol, name)
 
   0x00 0x00 revert
 
@@ -60,9 +59,6 @@
     MINT_TO()
   burn_from:
     BURN_FROM()
-  decimals:
-    // 18
-    [MOCK_DECIMALS] RETURN1_RETURNDATA0()
   symbol:
     SYMBOL()
   name:
