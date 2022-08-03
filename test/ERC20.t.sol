@@ -50,6 +50,7 @@ contract ERC20Test is Test {
     }
 
     function testSymbol() public {
+        setUp();
         assertEq(token.symbol(), "TOK");
     }
 
@@ -72,6 +73,10 @@ contract ERC20Test is Test {
         assertEq(token.balanceOf(USER2), 100 * 1e18);
     }
 
+    function testSnapshotTransfer() public {
+        testTransfer(100 * 1e18);
+    }
+
     function testApprove(uint256 _allowance) public {
         vm.expectEmit(true, true, false, true, address(token));
         emit Approval(USER2, USER3, _allowance);
@@ -83,6 +88,10 @@ contract ERC20Test is Test {
         assertTrue(success);
         assertEq(token.allowance(USER2, USER3), _allowance);
         assertEq(token.allowance(USER3, USER2), 0);
+    }
+
+    function testSnapshotApprove() public {
+        testApprove(200000 * 1e18);
     }
 
     function testTransferFrom(uint256 _amount, uint256 _allowance) public {
@@ -110,6 +119,10 @@ contract ERC20Test is Test {
         assertEq(token.balanceOf(USER2), 0);
     }
 
+    function testSnapshotTransferFrom() public {
+        testTransferFrom(2000 * 1e18, 300000 * 1e18);
+    }
+
     function testTransferFromMaxAllowance(uint256 _amount) public {
         vm.assume(_amount <= 1e9 * 1e18);
 
@@ -131,8 +144,7 @@ contract ERC20Test is Test {
         assertEq(token.balanceOf(USER2), 0);
     }
 
-    function runTestTransferFrom() public {
-        setUp();
-        testTransferFrom(0, 0);
+    function testSnapshotTransferFromMaxAllowance() public {
+        testTransferFromMaxAllowance(2389 * 1e18);
     }
 }

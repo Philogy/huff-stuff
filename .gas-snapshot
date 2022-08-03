@@ -1,0 +1,8 @@
+ERC20Test:testDecimals() (gas: 5484)
+ERC20Test:testMintAtDeploy() (gas: 2322175)
+ERC20Test:testName() (gas: 6750)
+ERC20Test:testSnapshotApprove() (gas: 38796)
+ERC20Test:testSnapshotTransfer() (gas: 41891)
+ERC20Test:testSnapshotTransferFrom() (gas: 77537)
+ERC20Test:testSnapshotTransferFromMaxAllowance() (gas: 72253)
+ERC20Test:testSymbol() (gas: 6729)
