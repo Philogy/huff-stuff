@@ -5,11 +5,17 @@ import {Test} from "forge-std/Test.sol";
 import {ERC20} from "solmate/tokens/ERC20.sol";
 import {HuffDeployer} from "foundry-huff/HuffDeployer.sol";
 
+abstract contract MockERC20 is ERC20 {
+    function mintTo(address, uint256) external virtual returns (bool);
+
+    function burnFrom(address, uint256) external virtual returns (bool);
+}
+
 contract ERC20Test is Test {
     address constant USER1 = address(uint160(1000));
     address constant USER2 = address(uint160(2000));
     address constant USER3 = address(uint160(3000));
-    ERC20 internal token;
+    MockERC20 internal token;
 
     event Transfer(address indexed _from, address indexed _to, uint256 _value);
     event Approval(
@@ -19,7 +25,7 @@ contract ERC20Test is Test {
     );
 
     function setUp() public {
-        token = ERC20(
+        token = MockERC20(
             HuffDeployer.config().with_deployer(USER1).deploy(
                 "test/contracts/MockERC20"
             )
@@ -149,5 +155,21 @@ contract ERC20Test is Test {
 
     function testSnapshotTransferFromMaxAllowance() public {
         testTransferFromMaxAllowance(2389 * 1e18);
+    }
+
+    function testBurn(uint256 _amount) public {
+        vm.assume(_amount <= 1e9 * 1e18);
+
+        vm.expectEmit(true, true, false, true, address(token));
+        emit Transfer(USER1, address(0), _amount);
+
+        token.burnFrom(USER1, _amount);
+
+        assertEq(token.balanceOf(USER1), 1e9 * 1e18 - _amount);
+        assertEq(token.totalSupply(), 1e9 * 1e18 - _amount);
+    }
+
+    function testSnapshotBurn() public {
+        testBurn(0);
     }
 }

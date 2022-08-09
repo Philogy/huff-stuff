@@ -221,11 +221,11 @@ memory layout:
 #define macro ERC20_SAFE_BURN(mem1, mem2) = takes(2) returns(0) {
   // takes:                   [amount, account]
   // -- update total supply
-  [SLOT_TOTAL_SUPPLY] dup1 // [supply_slot, supply_slot, amount, account]
-  sload dup3 sub           // [new_supply, supply_slot, amount, account]
+  [SLOT_TOTAL_SUPPLY] dup2 // [amount, supply_slot, amount, account]
+  dup2 sload sub           // [new_supply, supply_slot, amount, account]
   swap1 sstore             // [amount, account]
 
-  // -- increase balance
+  // -- decrease balance
   [SLOT_BALANCE_OF] <mem1> mstore
   dup2 <mem2> mstore
   0x40 <mem1> sha3         // [recipient_bal_slot, amount, account]
