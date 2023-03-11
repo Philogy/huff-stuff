@@ -1,0 +1,6 @@
+#define function measure(address _target, bytes calldata _calldata)
+  payable returns (bool success, bytes memory returnData)
+
+#define macro MAIN() = takes(0) returns(0) {
+  
+}

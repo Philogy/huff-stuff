@@ -1,0 +1,17 @@
+
+#define macro TEST_MACRO() = takes(0) returns(0) {
+  rando_label jump
+  0xff
+  // rando_label:
+  //   0x11
+}
+
+#define macro MAIN() = takes(0) returns(0) {
+  __ERROR(ERC20InsufficientAllowanceError)
+  TEST_MACRO()
+  skip_rando_label jump
+  rando_label:
+    0x01
+  skip_rando_label:
+  stop
+}

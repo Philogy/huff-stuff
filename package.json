@@ -1,4 +1,5 @@
 {
+  "license": "none",
   "dependencies": {
     "prettier": "^2.7.1",
     "prettier-plugin-solidity": "^1.0.0-dev.23"

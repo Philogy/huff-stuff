@@ -1,0 +1,12 @@
+// ERC20
+#define function transfer(address to, uint256 amount) nonpayable returns (bool)
+#define function transferFrom(address from, address to, uint256 amount) nonpayable returns (bool)
+#define function balanceOf(address account) view returns (uint256)
+
+#define error OtherError()
+
+#define macro MAIN() = takes(0) returns(0) {
+  __FUNC_SIG(OtherError) 0x00 mstore
+  0x20 0x00 return
+}
+

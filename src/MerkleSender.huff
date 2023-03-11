@@ -1,0 +1,81 @@
+#include "./MerkleProofLib.huff"
+
+#define constant TREE_ROOT = 0x1000cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc
+#define constant TOKEN     = 0x2000cccccccccccccccccccccccccccccccccccc
+
+// ERC20 -- Interfaces
+#define function transfer(address, uint256) nonpayable returns(bool)
+
+// Contract -- Interface
+#define function doTransfer(bytes32[], address, uint256, uint256) nonpayable returns()
+
+#define error InvalidProof()
+#define error ReusedID()
+#define error TransferFailed()
+
+#define macro REVERT_SIG(zero) = takes(0) returns(0) {
+  <zero> mstore
+  0x04 0x1c revert
+}
+
+#define macro TRANSFER(zero) = takes(0) returns(0) {
+  // -- load and check disperse id
+  0x64 calldataload // [disperse_id]
+  dup1 0x8 shr      // [used_ids_slot, disperse_id]
+  dup1 sload        // [used_ids, used_ids_slot, disperse_id]
+  0x1 dup4          // [disperse_id, 1, used_ids, used_ids_slot, disperse_id]
+  0xff and shl      // [mask, used_ids, used_ids_slot, disperse_id]
+  dup2 dup2 and     // [was_used, mask, used_ids, used_ids_slot, disperse_id]
+  id_was_used jumpi // [mask, used_ids, used_ids_slot, disperse_id]
+  // -- update used IDs
+  or                // [used_ids', used_ids_slot, disperse_id]
+  swap1 sstore      // [disperse_id]
+
+  // -- create leaf for proof
+  <zero> mstore     // []
+  [TREE_ROOT]       // [root]
+  0x24 calldataload // [recipient, root]
+  0x20 mstore       // [root]
+  0x44 calldataload // [amount, root]
+  0x40 mstore       // [root]
+  0x60 <zero> sha3  // [leaf, root]
+
+  // -- do ERC20 transfer
+  __FUNC_SIG(transfer) <zero> mstore
+  //                   [leaf, root]
+  0x20 <zero> 0x44 0x1c <zero> [TOKEN] gas call
+  //                   [success, leaf, root]
+  <zero> mload 0x1 eq
+  //                   [mload(0) == 1, success, leaf, root]
+  0x1f returndatasize gt
+  //                   [returndatasize >= 32, mload(0) == 1, success, leaf, root]
+  and               // [returndatasize >= 32 && mload(0) == 1, success, leaf, root]
+  returndatasize iszero
+  //                   [returndatasize == 0, returndatasize >= 32 && mload(0) == 1, success, leaf, root]
+  or and            // [overall_success, leaf, root]
+  transfer_succeeded jumpi
+    __FUNC_SIG(TransferFailed) REVERT_SIG(<zero>)
+  transfer_succeeded:
+
+  // -- do proof check
+  0x4 calldataload  // [proof.offset, leaf, root]
+  VERIFY_PROOF()    // [proof_valid]
+
+  proof_valid jumpi
+    __FUNC_SIG(InvalidProof) REVERT_SIG(<zero>)
+  proof_valid:
+  stop
+
+  id_was_used:
+    __FUNC_SIG(ReusedID) REVERT_SIG(<zero>)
+}
+
+#define macro MAIN() = takes(0) returns(0) {
+  returndatasize calldataload 0xe0 shr // [sig]
+  __FUNC_SIG(doTransfer) eq            // [sig == doTransfer.sig]
+  callvalue iszero                     // [msg.value == 0, sig == doTransfer.sig]
+  and doTransfer jumpi                 // []
+    returndatasize returndatasize revert
+  doTransfer:
+    TRANSFER(callvalue)
+}

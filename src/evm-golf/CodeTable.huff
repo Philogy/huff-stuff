@@ -1,0 +1,13 @@
+#define table CODE_TABLE {
+    0x604260005260206000F3
+}
+#define macro MAIN() = takes (0) returns (0) {
+  __tablesize(CODE_TABLE)  // [size]
+  // copy table to memory
+  dup1                     // [size, size]
+  __tablestart(CODE_TABLE) // [start, size, size]
+  returndatasize           // [0, start, size, size]
+  codecopy                   // [size]
+  returndatasize           // [0, size]
+  return 
+}

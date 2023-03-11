@@ -1,0 +1,63 @@
+/*
+  Credit to karma (@0xkarmacoma) for the original code: twitter.com/0xkarmacoma/status/1584239664310779904
+  Credit to kaden.eth (@0xKaden) for suggesting the use of msize: twitter.com/0xKaden/status/1584280521089376256
+*/
+#define macro reverse_word() = takes(1) returns(1) {
+  //               [x0]
+  0x00ff00ff00ff00ff00ff00ff00ff00ff00ff00ff00ff00ff00ff00ff00ff00ff
+  dup2 dup2 and // [x1r, mask1, x0]
+  0x08 shl      // [x1r', mask1, x0]
+  swap2         // [x1, mask1, x1r']
+  0x08 shr and  // [x1l', x1r']
+  or            // [x1]
+
+  0x0000ffff0000ffff0000ffff0000ffff0000ffff0000ffff0000ffff0000ffff
+  dup2 dup2 and
+  0x10 shl
+  swap2
+  0x10 shr and
+  or            // [x2]
+
+  0x00000000ffffffff00000000ffffffff00000000ffffffff00000000ffffffff
+  dup2 dup2 and
+  0x20 shl
+  swap2
+  0x20 shr and
+  or            // [x4]
+
+  0x0000000000000000ffffffffffffffff0000000000000000ffffffffffffffff
+  dup2 dup2 and
+  0x40 shl
+  swap2
+  0x40 shr and
+  or            // [x8]
+
+  dup1
+  0x80 shl
+  swap1
+  0x80 shr
+  or
+}
+
+/// @dev 0xffffffe0 only accomodates ~4 GB calldata max
+#define macro start_chunk_offset() = takes(0) returns(1) {
+  0x20                  // [0x20]
+  calldatasize 0x1f add // [cds + 31, 0x20]
+  0xffffffe0 and        // [(cds + 31) / 32 * 32, 0x20]
+  sub                   // [(cds + 31) / 32 * 32 - 32]
+}
+
+#define macro MAIN() = takes(0) returns(0) {
+  start_chunk_offset() // [start_chunk_offset = 32 * num_chunks - 32]
+  calldatasize         // [cds, start_chunk_offset]
+  calldatasize         // [cds, cds, start_chunk_offset]
+
+  next_iter:
+    msize dup4 sub     // [cd_offset, cds, cds, start_chunk_offset]
+    calldataload       // [cd[i'], cds, cds, start_chunk_offset]
+    reverse_word()     // [rev(cd[i']), cds, cds, start_chunk_offset]
+    msize mstore       // [cds, cds, start_chunk_offset]
+  calldatasize msize lt next_iter jumpi
+
+  msize sub return
+}

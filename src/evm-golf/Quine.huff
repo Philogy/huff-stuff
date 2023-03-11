@@ -1,0 +1,23 @@
+#define macro MAIN(code_section1, X, push_op) = takes(0) returns(0) {
+  0x8060701b173d52606f3d53383df30000
+
+  0x01 dup1   // [0x01, 0x01, code]
+  <size_bits> // [size_bits, 0x01, 0x01, code]
+  shl         // [pow1, 0x01, code]
+  swap1 dup2  // [pow1, 0x01, pow1, code]
+  or dup1 mul //
+  sub
+  mul
+
+  returndatasize mstore
+  codesize returndatasize return
+}
+
+// 3, 6, 12
+
+/*
+
+PUSH14 <code>
+
+
+*/

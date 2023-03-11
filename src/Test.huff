@@ -1,0 +1,7 @@
+
+#define function onERC721Received(address, address, uint256, bytes) nonpayable returns (bytes4)
+
+#define macro MAIN() = takes(0) returns(0) {
+  __FUNC_SIG(onERC721Received) returndatasize mstore
+  0x20 returndatasize return
+}

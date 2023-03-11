@@ -1,0 +1,7 @@
+#define macro MAIN() = takes(0) returns(0) {
+  returndatasize calldataload // [x]
+  not                         // [~x]
+  0x1 and                     // [even]
+  returndatasize mstore       // []
+  msize returndatasize return // []
+}

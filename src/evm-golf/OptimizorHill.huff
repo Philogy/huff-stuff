@@ -1,0 +1,8 @@
+#define macro MAIN() = takes(0) returns(0) {
+  origin calldatasize shl calldatasize shr
+  chainid or
+  msize mstore
+  pc msize mstore
+  0x60 returndatasize return
+}
+
